@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import api from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@acme.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('admin');
+  const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
@@ -18,8 +19,14 @@ export default function LoginPage() {
       const { data } = await api.post('/auth/login', { email, password });
       setAuth(data);
       navigate('/dashboard');
-    } catch {
-      setError('Credenciais inválidas');
+    } catch (err) {
+      if (axios.isAxiosError(err) && !err.response) {
+        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 8000.');
+      } else if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setError('Credenciais inválidas');
+      } else {
+        setError('Erro ao fazer login. Tente novamente.');
+      }
     }
   };
 
@@ -29,8 +36,8 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold">Entrar</h1>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div>
-          <label className="mb-1 block text-sm">Email</label>
-          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+          <label className="mb-1 block text-sm">Usuário ou e-mail</label>
+          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} type="text" required autoComplete="username" />
         </div>
         <div>
           <label className="mb-1 block text-sm">Senha</label>

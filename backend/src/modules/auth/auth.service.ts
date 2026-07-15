@@ -138,9 +138,16 @@ export class AuthService {
     };
   }
 
+  private normalizeLoginEmail(email: string) {
+    const normalized = email.trim().toLowerCase();
+    if (normalized === 'admin') return 'admin@admin.com';
+    return normalized;
+  }
+
   async login(email: string, password: string, ip?: string) {
+    const loginEmail = this.normalizeLoginEmail(email);
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: loginEmail },
       include: {
         members: {
           where: { status: MemberStatus.ACTIVE },

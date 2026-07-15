@@ -4,6 +4,28 @@ import { createPrismaClient } from '../src/prisma/create-prisma-client';
 
 const prisma = createPrismaClient();
 
+async function ensureDefaultAdmin(companyId: string) {
+  const email = 'admin@admin.com';
+  const passwordHash = await bcrypt.hash('admin', 12);
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, name: 'Admin' },
+    create: { email, name: 'Admin', passwordHash },
+  });
+
+  await prisma.member.upsert({
+    where: { userId_companyId: { userId: user.id, companyId } },
+    update: { systemRole: 'ADMIN', status: 'ACTIVE' },
+    create: {
+      userId: user.id,
+      companyId,
+      systemRole: 'ADMIN',
+      jobRole: 'OTHER',
+      status: 'ACTIVE',
+    },
+  });
+}
+
 async function main() {
   const plans = [
     { name: 'Team 5', seatLimit: 5, priceCents: 9900 },
@@ -27,7 +49,8 @@ async function main() {
 
   const existing = await prisma.company.findUnique({ where: { slug: 'acme-corp' } });
   if (existing) {
-    console.log('Seed already applied');
+    await ensureDefaultAdmin(existing.id);
+    console.log('Seed already applied (admin@admin.com / admin garantido)');
     return;
   }
 
@@ -146,7 +169,9 @@ async function main() {
     },
   });
 
-  console.log('Seed completed: admin@acme.com / Admin@123');
+  await ensureDefaultAdmin(company.id);
+
+  console.log('Seed completed: admin@acme.com / Admin@123 e admin / admin');
 }
 
 main()
