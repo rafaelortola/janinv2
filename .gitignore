@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+dist/
+generated/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Build
+frontend/dist/
+backend/dist/
+
+# Prisma
+backend/generated/
