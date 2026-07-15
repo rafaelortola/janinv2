@@ -1,6 +1,6 @@
 ---
 name: git-atualizador
-description: Especialista em Git. Use quando precisar commitar e enviar alterações ao repositório remoto, mantendo o projeto sempre atualizado.
+description: Especialista em Git. Use quando precisar commitar e enviar alterações ao repositório remoto, mantendo o projeto sempre atualizado. Acionado automaticamente pelo hook stop quando há alterações pendentes.
 model: inherit
 readonly: false
 ---

@@ -1,0 +1,30 @@
+name: "janinv2 — git atualizador"
+description: "Verifica alterações não commitadas periodicamente e commita/envia ao remoto."
+workflow:
+  triggers:
+    - cron:
+        cron: "0 * * * *"
+  actions: []
+  prompts:
+    - |
+      Você é o agente git-atualizador deste repositório.
+
+      1. Execute `git status` e verifique se há alterações não commitadas.
+      2. Se não houver alterações, encerre informando que o repositório está atualizado.
+      3. Se houver alterações:
+         - Revise o diff (`git diff` e `git diff --staged`)
+         - Adicione apenas arquivos relevantes, respeitando `.gitignore`
+         - Crie commit com mensagem descritiva (formato convencional: feat, fix, docs, chore)
+         - Faça push para a branch atual (`git push -u origin <branch>`)
+         - Se o push falhar, tente `git pull --rebase` e push novamente (até 2 tentativas)
+      4. Nunca commite segredos, tokens ou credenciais.
+      5. Nunca use `git push --force` em `main` ou `master`.
+
+      Ao concluir, reporte: branch, arquivos commitados, mensagem, hash do commit e status do push.
+  model: ""
+  agentOptions:
+    skipInstall: false
+    memoryEnabled: false
+  gitConfig:
+    repo: rafaelortola/janinv2
+    branch: main
