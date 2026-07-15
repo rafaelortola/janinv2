@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -9,8 +9,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('admin');
   const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get('/plans')
+      .then(() => setApiOnline(true))
+      .catch(() => setApiOnline(false));
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +28,11 @@ export default function LoginPage() {
       navigate('/dashboard');
     } catch (err) {
       if (axios.isAxiosError(err) && !err.response) {
-        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 8000.');
+        setError('Backend offline. Rode: cd backend && npm run start:dev');
       } else if (axios.isAxiosError(err) && err.response?.status === 401) {
-        setError('Credenciais inválidas');
+        setError('Credenciais inválidas. Rode: cd backend && npm run db:ensure-admin');
+      } else if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError('Muitas tentativas. Aguarde 1 minuto e tente novamente.');
       } else {
         setError('Erro ao fazer login. Tente novamente.');
       }
@@ -34,6 +43,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
       <form onSubmit={submit} className="card w-full max-w-md space-y-4 p-6">
         <h1 className="text-2xl font-bold">Entrar</h1>
+        {apiOnline === false && (
+          <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">
+            API indisponível. Inicie o backend na porta 8000.
+          </p>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div>
           <label className="mb-1 block text-sm">Usuário ou e-mail</label>
