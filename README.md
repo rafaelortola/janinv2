@@ -13,18 +13,37 @@ Plataforma multi-tenant inspirada em Jira/Azure DevOps, com foco em rastreabilid
 ### Pré-requisitos
 
 - Node.js 20+
-- PostgreSQL 14+ (local ou cloud)
+- PostgreSQL 14+ (local, Docker ou cloud)
+- Docker (opcional, recomendado para subir o banco rapidamente)
+
+### Banco de dados (Docker)
+
+Na raiz do projeto:
+
+```bash
+docker compose up -d
+```
+
+Isso sobe o PostgreSQL em `localhost:5432` com usuário/senha/banco `janin`/`janin`/`janinv2`, compatível com o `.env.example`.
 
 ### Backend
 
 ```bash
 cd backend
-cp .env.example .env   # configure DATABASE_URL
-npm install
-npx prisma db push
+cp .env.example .env   # ajuste DATABASE_URL se necessário
+npm install            # já roda `prisma generate` via postinstall
+npm run db:push        # gera o client + sincroniza o schema no banco
 npm run db:seed
 npm run start:dev      # http://localhost:8000/api/v1
 ```
+
+### Problemas comuns
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| `P1001: Can't reach database server` | PostgreSQL não está rodando | `docker compose up -d` ou inicie seu Postgres local |
+| `Module '@prisma/client' has no exported member ...` | Cliente Prisma não gerado | `cd backend && npx prisma generate` (ou `npm install` de novo) |
+| `password authentication failed` | `DATABASE_URL` incorreta | Confira `.env` com as credenciais do banco |
 
 ### Frontend
 

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: janinv2-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: janin
+      POSTGRES_PASSWORD: janin
+      POSTGRES_DB: janinv2
+    volumes:
+      - janinv2_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janin -d janinv2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  janinv2_pgdata:
