@@ -1,0 +1,458 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum SystemRole {
+  ADMIN
+  MEMBER
+}
+
+enum JobRole {
+  QA
+  DEV
+  PO
+  TECH_LEAD
+  DESIGNER
+  SCRUM_MASTER
+  OTHER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  SUSPENDED
+}
+
+enum WorkItemType {
+  EPIC
+  FEATURE
+  STORY
+  TASK
+  TECH_TASK
+  SPIKE
+  BUG
+  DEFECT
+  HOTFIX
+  CHANGE_REQUEST
+}
+
+enum WorkItemStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOWEST
+  LOW
+  MEDIUM
+  HIGH
+  HIGHEST
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  CLOSED
+}
+
+enum ReleaseStatus {
+  PLANNED
+  IN_PROGRESS
+  DELIVERED
+  CANCELLED
+}
+
+enum WorkItemLinkType {
+  RELATES_TO
+  BLOCKS
+  DUPLICATES
+}
+
+enum TestExecutionStatus {
+  NOT_RUN
+  PASS
+  FAIL
+  BLOCKED
+  SKIPPED
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  avatar       String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  members      Member[]
+  refreshTokens RefreshToken[]
+  assignedItems WorkItem[]    @relation("WorkItemAssignee")
+  comments     Comment[]
+  auditLogs    AuditLog[]
+  testExecutions TestExecution[]
+  quickFilters QuickFilter[]
+}
+
+model Company {
+  id        String         @id @default(uuid())
+  name      String
+  slug      String         @unique
+  status    CompanyStatus  @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  subscription Subscription?
+  members   Member[]
+  projects  Project[]
+  workItems WorkItem[]
+  auditLogs AuditLog[]
+  testPlans TestPlan[]
+}
+
+model Plan {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  seatLimit Int
+  priceCents Int           @default(0)
+  createdAt DateTime       @default(now())
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  companyId  String             @unique
+  planId     String
+  seatLimit  Int
+  seatsUsed  Int                @default(1)
+  status     SubscriptionStatus @default(TRIAL)
+  expiresAt  DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  company    Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan       Plan               @relation(fields: [planId], references: [id])
+}
+
+model Member {
+  id         String       @id @default(uuid())
+  userId     String
+  companyId  String
+  systemRole SystemRole   @default(MEMBER)
+  jobRole    JobRole      @default(OTHER)
+  status     MemberStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  companyId String?
+  userId    String?
+  action    String
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+model Project {
+  id           String        @id @default(uuid())
+  companyId    String
+  key          String
+  name         String
+  description  String?
+  dorChecklist Json          @default("[]")
+  dodChecklist Json          @default("[]")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  releases     Release[]
+  sprints      Sprint[]
+  boardColumns BoardColumn[]
+  workItems    WorkItem[]
+  labels       Label[]
+  testPlans    TestPlan[]
+  quickFilters QuickFilter[]
+
+  @@unique([companyId, key])
+  @@index([companyId])
+}
+
+model Release {
+  id          String        @id @default(uuid())
+  projectId   String
+  version     String
+  name        String
+  description String?
+  status      ReleaseStatus @default(PLANNED)
+  releaseDate DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItems   WorkItem[]
+  sprints     Sprint[]
+
+  @@unique([projectId, version])
+  @@index([projectId])
+}
+
+model Sprint {
+  id          String       @id @default(uuid())
+  projectId   String
+  releaseId   String?
+  name        String
+  goal        String?
+  status      SprintStatus @default(PLANNED)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release     Release?     @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  workItems   WorkItem[]
+  capacities  SprintCapacity[]
+
+  @@index([projectId])
+}
+
+model SprintCapacity {
+  id           String @id @default(uuid())
+  sprintId     String
+  memberId     String
+  storyPoints  Int    @default(0)
+  hours        Float  @default(0)
+  sprint       Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, memberId])
+}
+
+model BoardColumn {
+  id        String     @id @default(uuid())
+  projectId String
+  name      String
+  status    WorkItemStatus
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItems WorkItem[]
+
+  @@unique([projectId, status])
+  @@index([projectId])
+}
+
+model WorkItem {
+  id              String         @id @default(uuid())
+  companyId       String
+  projectId       String
+  parentId        String?
+  type            WorkItemType
+  sequence        Int
+  key             String
+  title           String
+  description     String?
+  status          WorkItemStatus @default(BACKLOG)
+  priority        Priority       @default(MEDIUM)
+  assigneeId      String?
+  sprintId        String?
+  releaseId       String?
+  columnId        String?
+  storyPoints     Int?
+  position        Int            @default(0)
+  acceptanceCriteria String?
+  sourceExecutionId String?      @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent          WorkItem?      @relation("WorkItemHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children        WorkItem[]     @relation("WorkItemHierarchy")
+  assignee        User?          @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  sprint          Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  release         Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  column          BoardColumn?   @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  sourceExecution TestExecution? @relation(fields: [sourceExecutionId], references: [id], onDelete: SetNull)
+  outgoingLinks   WorkItemLink[] @relation("LinkSource")
+  incomingLinks   WorkItemLink[] @relation("LinkTarget")
+  history         WorkItemHistory[]
+  comments        Comment[]
+  labels          WorkItemLabel[]
+  testCases       TestCase[]
+
+  @@unique([projectId, sequence])
+  @@unique([projectId, key])
+  @@index([companyId])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([sprintId])
+}
+
+model WorkItemLink {
+  id           String           @id @default(uuid())
+  sourceId     String
+  targetId     String
+  type         WorkItemLinkType
+  createdAt    DateTime         @default(now())
+  source       WorkItem         @relation("LinkSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target       WorkItem         @relation("LinkTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId, type])
+}
+
+model WorkItemHistory {
+  id          String   @id @default(uuid())
+  workItemId  String
+  userId      String?
+  field       String
+  oldValue    String?
+  newValue    String?
+  createdAt   DateTime @default(now())
+  workItem    WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
+  @@index([workItemId])
+}
+
+model Label {
+  id        String          @id @default(uuid())
+  projectId String
+  name      String
+  color     String          @default("#64748b")
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItems WorkItemLabel[]
+
+  @@unique([projectId, name])
+}
+
+model WorkItemLabel {
+  workItemId String
+  labelId    String
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  label      Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([workItemId, labelId])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  workItemId String
+  userId     String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workItemId])
+}
+
+model TestPlan {
+  id          String     @id @default(uuid())
+  companyId   String
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases   TestCase[]
+
+  @@index([projectId])
+}
+
+model TestCase {
+  id             String          @id @default(uuid())
+  testPlanId     String
+  storyId        String
+  title          String
+  steps          String?
+  expectedResult String?
+  priority       Priority        @default(MEDIUM)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  testPlan       TestPlan        @relation(fields: [testPlanId], references: [id], onDelete: Cascade)
+  story          WorkItem        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  executions     TestExecution[]
+
+  @@index([testPlanId])
+  @@index([storyId])
+}
+
+model TestExecution {
+  id          String              @id @default(uuid())
+  testCaseId  String
+  executorId  String
+  status      TestExecutionStatus @default(NOT_RUN)
+  notes       String?
+  executedAt  DateTime            @default(now())
+  testCase    TestCase            @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  executor    User                @relation(fields: [executorId], references: [id], onDelete: Cascade)
+  evidences   TestEvidence[]
+  defect      WorkItem?
+
+  @@index([testCaseId])
+}
+
+model TestEvidence {
+  id          String        @id @default(uuid())
+  executionId String
+  filename    String
+  url         String
+  content     String?
+  createdAt   DateTime      @default(now())
+  execution   TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+}
+
+model QuickFilter {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  name      String
+  query     Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId])
+}
