@@ -32,7 +32,7 @@ Isso sobe o PostgreSQL em `localhost:5432` com usuário/senha/banco `janin`/`jan
 cd backend
 cp .env.example .env   # ajuste DATABASE_URL se necessário
 npm install            # já roda `prisma generate` via postinstall
-npx prisma db push
+npm run db:push        # gera o client + sincroniza o schema no banco
 npm run db:seed
 npm run start:dev      # http://localhost:8000/api/v1
 ```
